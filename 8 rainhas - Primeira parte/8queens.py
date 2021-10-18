@@ -1,15 +1,18 @@
 import random
 import math
+import bitstring
 
 POPULATION_SIZE = 100
 MUTATION_PROB = 0.4
 RECOMBINATION_PROB = 0.9
 EVALUATIONS_NUMBER = 10000
 CHILDREN_NUMBER = 2
+CHROMOSOME_GENES = 8
+GENE_SIZE = 3
 
 class Queens8:
     def __init__(self):
-        self.best_solution = [0, 0, 0, 0, 0, 0, 0, 0]
+        self.best_solution = bitstring.BitArray(bin='')
         self.evaluations = 0
         self.population = self.generate_population()
         self.fitnesses = self.fitness(self.population)
@@ -43,11 +46,24 @@ class Queens8:
         self.best_solution = self.population[self.fitnesses.index(max(self.fitnesses))]
         print(max(self.fitnesses))
 
+    def decode_chromosome(self, chromosome):
+        positions = []
+        for i in range(CHROMOSOME_GENES):
+            position = int(chromosome.bin[3 * i:(i + 1) * GENE_SIZE], 2)
+            positions.append(position)
+
+        return positions
+
     def generate_population(self):
         population = []
 
         while len(population) < POPULATION_SIZE:
-            genes = random.sample(range(8), 8)
+            decoded_genes = random.sample(range(CHROMOSOME_GENES), CHROMOSOME_GENES)
+            
+            genes = "0b"
+            for gene in decoded_genes:
+                genes += format(gene, "0" + str(GENE_SIZE) + "b")
+            genes = bitstring.BitArray(genes)
             # if genes not in population:
             population.append(genes)
 
@@ -56,16 +72,17 @@ class Queens8:
     def fitness(self, individuals):
         fitness_list = []
         for individual in individuals:
+            positions = self.decode_chromosome(individual)
             self.evaluations += 1
             collisions = 0
-            for idx in range(len(individual)):
+            for idx in range(len(positions)):
                 aux = 0
-                for chk in range(idx, len(individual)):
-                    if individual[chk] == individual[idx] + aux and idx != chk:
+                for chk in range(idx, len(positions)):
+                    if positions[chk] == positions[idx] + aux and idx != chk:
                         collisions += 1
-                    elif individual[chk] == individual[idx] - aux and idx != chk:
+                    elif positions[chk] == positions[idx] - aux and idx != chk:
                         collisions += 1
-                    elif individual[chk] == individual[idx] and idx != chk:
+                    elif positions[chk] == positions[idx] and idx != chk:
                         collisions += 1
                     aux += 1
             fitness_list.append(1 / (1 + collisions))
@@ -75,12 +92,15 @@ class Queens8:
     def mutation(self, individuals):
         for individual in individuals:
             if random.random() <= MUTATION_PROB:
-                geneX = random.randint(0, len(individual) - 1)
-                geneY = random.randint(0, len(individual) - 1)
+                geneX = random.randint(0, CHROMOSOME_GENES - 1)
+                geneXIndex = GENE_SIZE * geneX
+                geneY = random.randint(0, CHROMOSOME_GENES - 1)
+                geneYIndex = GENE_SIZE * geneY
 
-                aux = individual[geneX]
-                individual[geneX] = individual[geneY]
-                individual[geneY] = aux
+                aux = individual[geneXIndex:geneXIndex + GENE_SIZE]
+                individual[geneXIndex:geneXIndex + GENE_SIZE] = \
+                    individual[geneYIndex:geneYIndex + GENE_SIZE]
+                individual[geneYIndex:geneYIndex + GENE_SIZE] = aux
             
         return individuals
 
@@ -89,17 +109,18 @@ class Queens8:
                 parent_1 = parents[0]
                 parent_2 = parents[1]
 
-                cutPoint = random.randint(0, 7)
+                cutPoint = random.randint(0, CHROMOSOME_GENES - 1)
+                cutPointIndex = cutPoint * GENE_SIZE
                 
                 children = []
-                children.append(parent_1[:cutPoint] + parent_2[cutPoint:])
-                children.append(parent_2[:cutPoint] + parent_1[cutPoint:])
+                children.append(parent_1[:cutPointIndex] + parent_2[cutPointIndex:])
+                children.append(parent_2[:cutPointIndex] + parent_1[cutPointIndex:])
                 return children
 
             return parents
 
 
-    def survivors(self, population, fitnesses):       
+    def survivors(self, population, fitnesses): 
         while(len(population) > POPULATION_SIZE):
             del(population[fitnesses.index(min(fitnesses))])
             del(fitnesses[fitnesses.index(min(fitnesses))])
@@ -122,4 +143,5 @@ class Queens8:
 if __name__ == '__main__':
     queens8 = Queens8()
     queens8.run()
-    print(queens8.best_solution)
+    print(queens8.best_solution.bin)
+    print(queens8.decode_chromosome(queens8.best_solution))
