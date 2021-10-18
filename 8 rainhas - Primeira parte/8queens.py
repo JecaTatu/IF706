@@ -54,18 +54,19 @@ class Queens8:
 
         return positions
 
+    def encode_chromosome(self, genes):
+        binary_genes = "0b"
+        for gene in genes:
+            binary_genes += format(gene, "0" + str(GENE_SIZE) + "b")
+
+        return bitstring.BitArray(binary_genes)
+
     def generate_population(self):
         population = []
 
         while len(population) < POPULATION_SIZE:
             decoded_genes = random.sample(range(CHROMOSOME_GENES), CHROMOSOME_GENES)
-            
-            genes = "0b"
-            for gene in decoded_genes:
-                genes += format(gene, "0" + str(GENE_SIZE) + "b")
-            genes = bitstring.BitArray(genes)
-            # if genes not in population:
-            population.append(genes)
+            population.append(self.encode_chromosome(decoded_genes))
 
         return population
 
@@ -106,15 +107,24 @@ class Queens8:
 
     def recombination(self, parents):
             if random.random() <= RECOMBINATION_PROB:
-                parent_1 = parents[0]
-                parent_2 = parents[1]
+                parent_1_genes = self.decode_chromosome(parents[0])
+                parent_2_genes = self.decode_chromosome(parents[1])
 
                 cutPoint = random.randint(0, CHROMOSOME_GENES - 1)
-                cutPointIndex = cutPoint * GENE_SIZE
+
+                child_1 = parent_1_genes[cutPoint:]
+                for gene in parent_2_genes[:cutPoint] + parent_2_genes[cutPoint:]:
+                    if gene not in child_1:
+                        child_1.append(gene)
+                
+                child_2 = parent_2_genes[cutPoint:]
+                for gene in parent_1_genes[:cutPoint] + parent_1_genes[cutPoint:]:
+                    if gene not in child_2:
+                        child_2.append(gene)
                 
                 children = []
-                children.append(parent_1[:cutPointIndex] + parent_2[cutPointIndex:])
-                children.append(parent_2[:cutPointIndex] + parent_1[cutPointIndex:])
+                children.append(self.encode_chromosome(child_1))
+                children.append(self.encode_chromosome(child_2))
                 return children
 
             return parents
